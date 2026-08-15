@@ -268,7 +268,9 @@
     ctx.fillStyle = "#fff";
     ctx.fillRect(leftPaddleX(), left.y - paddleH / 2, paddleW, paddleH);
     ctx.fillRect(rightPaddleX(), right.y - paddleH / 2, paddleW, paddleH);
-    ctx.fillRect(ball.x - ballSize / 2, ball.y - ballSize / 2, ballSize, ballSize);
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ballSize / 2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function frame(time) {
