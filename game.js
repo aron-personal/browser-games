@@ -35,6 +35,10 @@
   /** @type {'ready' | 'playing' | 'miss'} */
   let state = "ready";
   let lastTime = 0;
+  let lastTapAt = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let pendingStart = null;
+  const DOUBLE_TAP_MS = 320;
 
   function resize() {
     dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -126,6 +130,21 @@
     else right.y = y;
   }
 
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  function toggleFullscreen() {
+    const root = document.documentElement;
+    if (isFullscreen()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
+      return;
+    }
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (request) request.call(root).catch(() => {});
+  }
+
   function onPointerDown(event) {
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
@@ -133,8 +152,26 @@
     pointers.set(event.pointerId, side);
     setPaddleY(side, event.clientY);
 
+    const now = performance.now();
+    const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
+    lastTapAt = now;
+
+    if (doubleTap) {
+      if (pendingStart !== null) {
+        clearTimeout(pendingStart);
+        pendingStart = null;
+      }
+      lastTapAt = 0;
+      toggleFullscreen();
+      return;
+    }
+
     if (state === "ready" || state === "miss") {
-      startRally();
+      if (pendingStart !== null) clearTimeout(pendingStart);
+      pendingStart = setTimeout(() => {
+        pendingStart = null;
+        if (state === "ready" || state === "miss") startRally();
+      }, DOUBLE_TAP_MS);
     }
   }
 
@@ -250,12 +287,14 @@
 
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
+  document.addEventListener("fullscreenchange", resize);
+  document.addEventListener("webkitfullscreenchange", resize);
 
   resize();
   left.y = height / 2;
   right.y = height / 2;
   resetBall(false);
   updateScoreDisplay();
-  setMessage("Tap to start");
+  setMessage("Tap to start · Double-tap for fullscreen");
   requestAnimationFrame(frame);
 })();
