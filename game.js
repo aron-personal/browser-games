@@ -10,7 +10,7 @@
   const BALL_SIZE_RATIO = 0.018;
   const BASE_SPEED_RATIO = 0.55;
   const SPEED_BUMP = 1.04;
-  const MAX_SPEED_RATIO = 1.35;
+  const MAX_SPEED_RATIO = 2.2;
   const HIT_ANGLE_FACTOR = 0.75;
 
   let width = 0;
