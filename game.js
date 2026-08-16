@@ -12,6 +12,12 @@
   const SPEED_BUMP = 1.04;
   const MAX_SPEED_RATIO = 2.2;
   const HIT_ANGLE_FACTOR = 0.75;
+  /** Paddle sits this far above the contact point (CSS px). */
+  const FINGER_Y_BUFFER = 80;
+  /** Extra inset from left/right edges so fingers have room. */
+  const EDGE_FINGER_BUFFER = 56;
+  const EDGE_FINGER_BUFFER_LARGE = 40;
+  const SMALL_SCREEN_MAX = 900;
 
   let width = 0;
   let height = 0;
@@ -23,6 +29,7 @@
   let ballSize = 0;
   let baseSpeed = 0;
   let maxSpeed = 0;
+  let smallScreen = false;
 
   const left = { y: 0 };
   const right = { y: 0 };
@@ -52,7 +59,14 @@
 
     paddleW = Math.max(10, width * PADDLE_WIDTH_RATIO);
     paddleH = Math.max(60, height * PADDLE_HEIGHT_RATIO);
-    paddleMargin = Math.max(12, width * PADDLE_MARGIN_RATIO);
+    smallScreen = Math.min(width, height) < SMALL_SCREEN_MAX;
+    paddleMargin = Math.max(
+      width * PADDLE_MARGIN_RATIO,
+      smallScreen ? EDGE_FINGER_BUFFER : EDGE_FINGER_BUFFER_LARGE
+    );
+    if (smallScreen) {
+      paddleW = Math.max(paddleW, 16);
+    }
     ballSize = Math.max(10, Math.min(width, height) * BALL_SIZE_RATIO);
     baseSpeed = Math.min(width, height) * BASE_SPEED_RATIO;
     maxSpeed = Math.min(width, height) * MAX_SPEED_RATIO;
@@ -124,8 +138,13 @@
     return clientX < width / 2 ? "left" : "right";
   }
 
-  function setPaddleY(side, clientY) {
-    const y = clamp(clientY, paddleH / 2, height - paddleH / 2);
+  function setPaddleY(side, clientY, pointerType) {
+    let y = clientY;
+    // Offset contact so the paddle stays visible above a finger (or when testing a narrow window).
+    if (pointerType !== "mouse" || smallScreen) {
+      y -= FINGER_Y_BUFFER;
+    }
+    y = clamp(y, paddleH / 2, height - paddleH / 2);
     if (side === "left") left.y = y;
     else right.y = y;
   }
@@ -150,7 +169,7 @@
     canvas.setPointerCapture(event.pointerId);
     const side = paddleSideFromX(event.clientX);
     pointers.set(event.pointerId, side);
-    setPaddleY(side, event.clientY);
+    setPaddleY(side, event.clientY, event.pointerType);
 
     const now = performance.now();
     const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
@@ -179,7 +198,7 @@
     event.preventDefault();
     const side = pointers.get(event.pointerId);
     if (!side) return;
-    setPaddleY(side, event.clientY);
+    setPaddleY(side, event.clientY, event.pointerType);
   }
 
   function onPointerUp(event) {
