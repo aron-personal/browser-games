@@ -42,7 +42,8 @@
   /** @type {'ready' | 'playing' | 'miss'} */
   let state = "ready";
   let lastTime = 0;
-  let lastTapAt = 0;
+  /** @type {{ left: number, right: number }} */
+  const lastTapAt = { left: 0, right: 0 };
   /** @type {ReturnType<typeof setTimeout> | null} */
   let pendingStart = null;
   const DOUBLE_TAP_MS = 320;
@@ -172,15 +173,15 @@
     setPaddleY(side, event.clientY, event.pointerType);
 
     const now = performance.now();
-    const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
-    lastTapAt = now;
+    const doubleTap = now - lastTapAt[side] < DOUBLE_TAP_MS;
+    lastTapAt[side] = now;
 
     if (doubleTap) {
       if (pendingStart !== null) {
         clearTimeout(pendingStart);
         pendingStart = null;
       }
-      lastTapAt = 0;
+      lastTapAt[side] = 0;
       toggleFullscreen();
       return;
     }
