@@ -319,17 +319,21 @@
       active: true,
     });
 
-    const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
-    lastTapAt = now;
-
-    if (doubleTap) {
-      if (pendingStart !== null) {
-        clearTimeout(pendingStart);
-        pendingStart = null;
+      // Canvas double-tap fullscreen only when not playing (avoids accidental exit mid-game).
+    if (state !== "playing") {
+      const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
+      lastTapAt = now;
+      if (doubleTap) {
+        if (pendingStart !== null) {
+          clearTimeout(pendingStart);
+          pendingStart = null;
+        }
+        lastTapAt = 0;
+        toggleFullscreen();
+        return;
       }
+    } else {
       lastTapAt = 0;
-      toggleFullscreen();
-      return;
     }
 
     if (state === "ready" || state === "over") {
@@ -528,14 +532,49 @@
   canvas.addEventListener("pointercancel", onPointerUp, { passive: false });
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
+  const fullscreenBtn = document.getElementById("fullscreen");
+  const fullscreenIcon = fullscreenBtn.querySelector(".fs-icon path");
+  const ICON_ENTER =
+    "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z";
+  const ICON_EXIT =
+    "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";
+  let fullscreenBtnTapAt = 0;
+
+  function syncFullscreenIcon() {
+    fullscreenIcon.setAttribute("d", isFullscreen() ? ICON_EXIT : ICON_ENTER);
+  }
+
+  fullscreenBtn.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const now = performance.now();
+      if (now - fullscreenBtnTapAt < DOUBLE_TAP_MS) {
+        fullscreenBtnTapAt = 0;
+        toggleFullscreen();
+        return;
+      }
+      fullscreenBtnTapAt = now;
+    },
+    { passive: false }
+  );
+  fullscreenBtn.addEventListener("click", (e) => e.preventDefault());
+
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
-  document.addEventListener("fullscreenchange", resize);
-  document.addEventListener("webkitfullscreenchange", resize);
+  document.addEventListener("fullscreenchange", () => {
+    syncFullscreenIcon();
+    resize();
+  });
+  document.addEventListener("webkitfullscreenchange", () => {
+    syncFullscreenIcon();
+    resize();
+  });
 
   resize();
   updateScoreDisplay();
   updateLivesDisplay();
-  setMessage("Swipe to slice · Double-tap fullscreen");
+  setMessage("Swipe to slice");
   requestAnimationFrame(frame);
 })();
