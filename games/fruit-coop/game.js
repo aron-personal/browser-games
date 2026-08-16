@@ -15,99 +15,124 @@
   const MIN_SPAWN_MS = 420;
   const BOMB_CHANCE = 0.14;
 
-  /** @type {{ name: string, color: string, fill: string, art: string[] }[]} */
+  /** @type {{ name: string, color: string, fill: string, deep: string, shape: 'round' | 'tall' | 'wide' | 'banana' | 'star' | 'apple', art: string[], accent?: string[] }[]} */
   const FRUIT_TYPES = [
     {
       name: "apple",
-      color: "#ff6b6b",
-      fill: "#c62828",
+      color: "#ff8a80",
+      fill: "#e53935",
+      deep: "#8e0000",
+      shape: "apple",
       art: [
-        "   ,@@,   ",
-        "  @@@@@@  ",
-        " @@@@@@@@ ",
-        " @@@@@@@@ ",
-        "  @@@@@@  ",
-        "   '@@'   ",
+        "     ~     ",
+        "   .@@@.   ",
+        "  @:. .:@  ",
+        " @@  ~  @@ ",
+        "  @:' ':@  ",
+        "   '@@@'   ",
       ],
     },
     {
       name: "banana",
-      color: "#ffd54f",
-      fill: "#f9a825",
+      color: "#fff59d",
+      fill: "#ffca28",
+      deep: "#f57f17",
+      shape: "banana",
       art: [
-        "     ##   ",
-        "    ####  ",
-        "   ##  ## ",
-        "  ##   ## ",
-        " ##   ##  ",
-        "  ###'    ",
+        "      /##  ",
+        "     /#.#\\ ",
+        "    /#..#\\ ",
+        "   /#...#/ ",
+        "  /#...#/  ",
+        " /####/    ",
+        " ''        ",
       ],
     },
     {
       name: "watermelon",
-      color: "#69f0ae",
-      fill: "#2e7d32",
+      color: "#b9f6ca",
+      fill: "#66bb6a",
+      deep: "#1b5e20",
+      shape: "wide",
       art: [
-        "  .%%%%.  ",
-        " %%%%%%%% ",
-        "%%%%%%%%%%",
-        "%%%%%%%%%%",
-        " %%%%%%%% ",
-        "  '%%%%'  ",
+        "  .::::::. ",
+        " :::::::::",
+        ":::::::::::",
+        ":::::::::::",
+        " :::::::::",
+        "  '::::::' ",
+      ],
+      accent: [
+        "  .| | | |. ",
+        " : | | | |:",
+        ":| | | | | |:",
+        ":| | | | | |:",
+        " : | | | |:",
+        "  '| | | |' ",
       ],
     },
     {
       name: "orange",
-      color: "#ffab40",
-      fill: "#ef6c00",
+      color: "#ffe0b2",
+      fill: "#ff9800",
+      deep: "#e65100",
+      shape: "round",
       art: [
-        "  .@@@@.  ",
-        " @@@@@@@@ ",
-        "@@@@@@@@@@",
-        " @@@@@@@@ ",
-        "  '@@@@'  ",
+        "    .*.    ",
+        "  .@o o@.  ",
+        " @o  .  o@ ",
+        "@o  (@)  o@",
+        " @o     o@ ",
+        "  '@o o@'  ",
       ],
     },
     {
       name: "starfruit",
-      color: "#ea80fc",
-      fill: "#8e24aa",
+      color: "#f3e5f5",
+      fill: "#ce93d8",
+      deep: "#6a1b9a",
+      shape: "star",
       art: [
-        "    **    ",
-        "   ****   ",
-        " ******** ",
-        "**********",
-        " ******** ",
-        "   ****   ",
-        "    **    ",
+        "     A     ",
+        "    / \\    ",
+        " /\\/   \\/\\ ",
+        "<  .:::.  >",
+        " \\/\\   /\\/ ",
+        "    \\ /    ",
+        "     V     ",
       ],
     },
     {
       name: "pear",
-      color: "#40c4ff",
-      fill: "#0277bd",
+      color: "#b3e5fc",
+      fill: "#4fc3f7",
+      deep: "#01579b",
+      shape: "tall",
       art: [
-        "   .@@.   ",
-        "  @@@@@@  ",
-        " @@@@@@@@ ",
-        "@@@@@@@@@@",
-        " @@@@@@@@ ",
-        "  '@@@@'  ",
+        "    .~.    ",
+        "   .@o@.   ",
+        "  @@   @@  ",
+        " @o  ~  o@ ",
+        "@@       @@",
+        " @o     o@ ",
+        "  '@@@@@'  ",
       ],
     },
   ];
 
   const BOMB_TYPE = {
     name: "bomb",
-    color: "#ff5252",
-    fill: "#212121",
+    color: "#ffcdd2",
+    fill: "#455a64",
+    deep: "#000a12",
+    shape: "round",
     art: [
-      "    !!    ",
-      "  .@@@@.  ",
-      " @@x  x@@ ",
-      " @@@@@@@@ ",
-      "  @@@@@@  ",
-      "   '@@'   ",
+      "     *!    ",
+      "   .@@@@.  ",
+      "  @ x  x @ ",
+      "  @  ><  @ ",
+      "   @vvvv@  ",
+      "    '@@'   ",
     ],
   };
 
@@ -266,11 +291,11 @@
     updateScoreDisplay();
 
     if (combo > 1) {
-      comboMessageUntil = now + 700;
+      comboMessageUntil = now + 900;
       setMessage(`COMBO x${combo}  +${points}`);
     }
 
-    sliceFruit(entity, bladeAngle);
+    sliceFruit(entity, bladeAngle, combo);
   }
 
   function spawnParticle(opts) {
@@ -289,11 +314,15 @@
     });
   }
 
-  function sliceFruit(entity, bladeAngle) {
+  function sliceFruit(entity, bladeAngle, comboLevel = 1) {
     entity.sliced = true;
+    const power = Math.min(comboLevel, 8);
+    const multi = power > 1;
+    const juiceScale = 1 + (power - 1) * 0.55;
+    const speedScale = 1 + (power - 1) * 0.22;
     const nx = Math.cos(bladeAngle + Math.PI / 2);
     const ny = Math.sin(bladeAngle + Math.PI / 2);
-    const kick = 180 + Math.random() * 120;
+    const kick = (180 + Math.random() * 120) * (1 + (power - 1) * 0.12);
 
     for (const half of /** @type {const} */ ([-1, 1])) {
       entities.push({
@@ -303,31 +332,31 @@
         vx: entity.vx + nx * half * kick,
         vy: entity.vy + ny * half * kick * 0.35 - 40,
         angle: entity.angle,
-        spin: entity.spin + half * 3,
+        spin: entity.spin + half * (3 + power * 0.4),
         radius: entity.radius * 0.9,
         type: entity.type,
         isBomb: false,
         sliced: true,
         half,
-        life: 0.9,
+        life: 0.9 + (multi ? 0.15 : 0),
         alpha: 1,
       });
     }
 
     // Directional juice spray along the cut
-    const count = 42 + ((Math.random() * 18) | 0);
+    const count = Math.round((42 + Math.random() * 18) * juiceScale);
     for (let i = 0; i < count; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      const spread = (Math.random() - 0.5) * 1.35;
+      const spread = (Math.random() - 0.5) * (1.35 + power * 0.12);
       const a = bladeAngle + (Math.PI / 2) * side + spread;
-      const sp = 70 + Math.random() * 340;
+      const sp = (70 + Math.random() * 340) * speedScale;
       spawnParticle({
         x: entity.x + (Math.random() - 0.5) * entity.radius * 0.7,
         y: entity.y + (Math.random() - 0.5) * entity.radius * 0.7,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp - 50 - Math.random() * 110,
-        life: 0.4 + Math.random() * 0.55,
-        size: 2.5 + Math.random() * 6.5,
+        life: 0.4 + Math.random() * 0.55 + (multi ? 0.15 : 0),
+        size: (2.5 + Math.random() * 6.5) * (1 + (power - 1) * 0.08),
         color: Math.random() < 0.28 ? "#fff5e6" : entity.type.color,
         drag: 0.985,
         kind: "juice",
@@ -335,16 +364,17 @@
     }
 
     // Extra radial juice burst from the center
-    for (let i = 0; i < 20; i++) {
+    const radial = Math.round(20 * juiceScale);
+    for (let i = 0; i < radial; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 50 + Math.random() * 220;
+      const sp = (50 + Math.random() * 220) * speedScale;
       spawnParticle({
         x: entity.x,
         y: entity.y,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp - 30,
-        life: 0.3 + Math.random() * 0.4,
-        size: 2 + Math.random() * 5,
+        life: 0.3 + Math.random() * 0.4 + (multi ? 0.1 : 0),
+        size: (2 + Math.random() * 5) * (1 + (power - 1) * 0.1),
         color: entity.type.fill || entity.type.color,
         drag: 0.98,
         kind: "juice",
@@ -352,18 +382,19 @@
     }
 
     // Tiny bright sparks on the blade line
-    for (let i = 0; i < 8; i++) {
+    const sparkCount = 8 + (power - 1) * 6;
+    for (let i = 0; i < sparkCount; i++) {
       const t = (Math.random() - 0.5) * entity.radius * 1.4;
       const a = bladeAngle + (Math.random() - 0.5) * 0.6;
-      const sp = 40 + Math.random() * 160;
+      const sp = (40 + Math.random() * 160) * speedScale;
       spawnParticle({
         x: entity.x + Math.cos(bladeAngle) * t,
         y: entity.y + Math.sin(bladeAngle) * t,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp,
-        life: 0.15 + Math.random() * 0.2,
-        size: 1.5 + Math.random() * 2.5,
-        color: "#ffffff",
+        life: 0.15 + Math.random() * 0.2 + (multi ? 0.12 : 0),
+        size: 1.5 + Math.random() * 2.5 + (power - 1) * 0.35,
+        color: multi && Math.random() < 0.45 ? "#ffe082" : "#ffffff",
         drag: 0.92,
         kind: "spark",
       });
@@ -373,14 +404,54 @@
       x: entity.x,
       y: entity.y,
       radius: entity.radius * 0.3,
-      maxRadius: entity.radius * 2.2,
-      life: 0.28,
-      maxLife: 0.28,
+      maxRadius: entity.radius * (2.2 + (power - 1) * 0.7),
+      life: 0.28 + (multi ? 0.12 : 0),
+      maxLife: 0.28 + (multi ? 0.12 : 0),
       color: entity.type.color,
-      width: 2.5,
+      width: 2.5 + (power - 1) * 0.4,
     });
-  }
 
+    if (multi) {
+      // Extra shockwave rings for combos
+      rings.push({
+        x: entity.x,
+        y: entity.y,
+        radius: entity.radius * 0.5,
+        maxRadius: entity.radius * (3.5 + power * 0.55),
+        life: 0.4 + power * 0.05,
+        maxLife: 0.4 + power * 0.05,
+        color: power >= 4 ? "#ffe082" : "#ffffff",
+        width: 2 + power * 0.35,
+      });
+
+      // Golden confetti sparks for bigger combos
+      const confetti = 10 + power * 8;
+      for (let i = 0; i < confetti; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = (120 + Math.random() * 380) * speedScale;
+        const palette = ["#ffffff", "#ffe082", "#ffd54f", entity.type.color, "#fff59d"];
+        spawnParticle({
+          x: entity.x,
+          y: entity.y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 60,
+          life: 0.45 + Math.random() * 0.5,
+          size: 2 + Math.random() * 4 + power * 0.2,
+          color: palette[(Math.random() * palette.length) | 0],
+          drag: 0.97,
+          kind: "spark",
+        });
+      }
+
+      if (power >= 3) {
+        screenFlash = {
+          life: 0.12 + Math.min(power, 6) * 0.025,
+          maxLife: 0.12 + Math.min(power, 6) * 0.025,
+          color: power >= 5 ? "#ffe082" : "#ffffff",
+        };
+      }
+    }
+  }
   function explodeBomb(entity) {
     entity.sliced = true;
     screenFlash = { life: 0.28, maxLife: 0.28, color: "rgba(255, 80, 60, 0.55)" };
@@ -670,51 +741,270 @@
     }
   }
 
+  function fruitBodyPath(shape, r) {
+    ctx.beginPath();
+    if (shape === "banana") {
+      // Crescent banana
+      ctx.moveTo(r * 0.05, -r * 0.9);
+      ctx.bezierCurveTo(r * 0.85, -r * 0.75, r * 1.05, r * 0.05, r * 0.55, r * 0.85);
+      ctx.bezierCurveTo(r * 0.35, r * 1.0, r * 0.05, r * 0.95, -r * 0.05, r * 0.7);
+      ctx.bezierCurveTo(r * 0.55, r * 0.15, r * 0.35, -r * 0.45, -r * 0.05, -r * 0.75);
+      ctx.bezierCurveTo(-r * 0.15, -r * 0.95, -r * 0.05, -r * 0.95, r * 0.05, -r * 0.9);
+      ctx.closePath();
+    } else if (shape === "star") {
+      const spikes = 5;
+      const outer = r * 1.08;
+      const inner = r * 0.5;
+      for (let i = 0; i < spikes * 2; i++) {
+        const rad = (i * Math.PI) / spikes - Math.PI / 2;
+        const rr = i % 2 === 0 ? outer : inner;
+        const x = Math.cos(rad) * rr;
+        const y = Math.sin(rad) * rr;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    } else if (shape === "tall") {
+      // Pear silhouette
+      ctx.moveTo(0, -r * 1.08);
+      ctx.bezierCurveTo(r * 0.42, -r * 1.05, r * 0.55, -r * 0.35, r * 0.62, r * 0.05);
+      ctx.bezierCurveTo(r * 0.95, r * 0.35, r * 0.9, r * 0.95, 0, r * 1.08);
+      ctx.bezierCurveTo(-r * 0.9, r * 0.95, -r * 0.95, r * 0.35, -r * 0.62, r * 0.05);
+      ctx.bezierCurveTo(-r * 0.55, -r * 0.35, -r * 0.42, -r * 1.05, 0, -r * 1.08);
+      ctx.closePath();
+    } else if (shape === "wide") {
+      ctx.ellipse(0, 0, r * 1.18, r * 0.78, 0, 0, Math.PI * 2);
+    } else if (shape === "apple") {
+      // Slight apple dimple
+      ctx.moveTo(0, -r * 0.92);
+      ctx.bezierCurveTo(r * 0.55, -r * 1.08, r * 1.05, -r * 0.35, r * 0.95, r * 0.25);
+      ctx.bezierCurveTo(r * 0.85, r * 0.95, r * 0.35, r * 1.08, 0, r * 0.98);
+      ctx.bezierCurveTo(-r * 0.35, r * 1.08, -r * 0.85, r * 0.95, -r * 0.95, r * 0.25);
+      ctx.bezierCurveTo(-r * 1.05, -r * 0.35, -r * 0.55, -r * 1.08, 0, -r * 0.92);
+      ctx.closePath();
+    } else {
+      ctx.ellipse(0, 0, r * 0.98, r * 1.02, 0, 0, Math.PI * 2);
+    }
+  }
+
+  function drawFruitDecor(type, r, half) {
+    if (half) return;
+    const name = type.name;
+
+    if (name === "apple" || name === "pear") {
+      ctx.strokeStyle = "#4e342e";
+      ctx.lineWidth = Math.max(1.6, r * 0.07);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.72);
+      ctx.quadraticCurveTo(r * 0.12, -r * 1.05, r * 0.02, -r * 1.22);
+      ctx.stroke();
+      ctx.fillStyle = name === "apple" ? "#66bb6a" : "#81c784";
+      ctx.beginPath();
+      ctx.ellipse(r * 0.22, -r * 1.0, r * 0.26, r * 0.11, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    if (name === "watermelon") {
+      ctx.save();
+      fruitBodyPath("wide", r);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(0,40,0,0.45)";
+      ctx.lineWidth = Math.max(2, r * 0.1);
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * r * 0.32, -r);
+        ctx.quadraticCurveTo(i * r * 0.28, 0, i * r * 0.32, r);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#c8e6c9";
+      ctx.lineWidth = Math.max(2.5, r * 0.12);
+      fruitBodyPath("wide", r * 0.92);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (name === "orange") {
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + 0.3;
+        const rr = r * (0.25 + (i % 3) * 0.15);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr * 0.9, Math.max(1.2, r * 0.045), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#2e7d32";
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.82, Math.max(2, r * 0.09), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (name === "banana") {
+      ctx.strokeStyle = "rgba(183, 98, 0, 0.45)";
+      ctx.lineWidth = Math.max(1.2, r * 0.05);
+      ctx.lineCap = "round";
+      for (const t of [-0.25, 0, 0.25]) {
+        ctx.beginPath();
+        ctx.moveTo(r * (0.15 + t * 0.2), -r * 0.65);
+        ctx.bezierCurveTo(
+          r * (0.7 + t * 0.15),
+          -r * 0.2,
+          r * (0.65 + t * 0.1),
+          r * 0.35,
+          r * (0.2 + t * 0.1),
+          r * 0.7
+        );
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#5d4037";
+      ctx.beginPath();
+      ctx.arc(r * 0.05, -r * 0.88, Math.max(1.8, r * 0.08), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (name === "starfruit") {
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = Math.max(1.2, r * 0.05);
+      fruitBodyPath("star", r * 0.62);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (name === "bomb") {
+      ctx.fillStyle = "#78909c";
+      ctx.beginPath();
+      ctx.ellipse(0, -r * 0.78, r * 0.28, r * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#b0bec5";
+      ctx.lineWidth = Math.max(1.6, r * 0.07);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.88);
+      ctx.quadraticCurveTo(r * 0.28, -r * 1.15, r * 0.08, -r * 1.4);
+      ctx.stroke();
+      ctx.fillStyle = "#ffab40";
+      ctx.beginPath();
+      ctx.arc(r * 0.08, -r * 1.42, Math.max(2.2, r * 0.11), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff59d";
+      ctx.beginPath();
+      ctx.arc(r * 0.08, -r * 1.42, Math.max(1.1, r * 0.05), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function drawAscii(entity) {
-    const art = entity.type.art;
-    const lineH = Math.max(11, entity.radius * 0.36);
-    const fontSize = Math.max(12, lineH * 1.05);
+    const type = entity.type;
+    const art = type.art;
+    const shape = type.shape || "round";
+    const r = entity.radius;
+    const lineH = Math.max(9, r * 0.3);
+    const fontSize = Math.max(10, lineH * 1.0);
     const alpha = entity.alpha ?? 1;
     ctx.save();
     ctx.translate(entity.x, entity.y);
     ctx.rotate(entity.angle);
     if (entity.half === -1) {
       ctx.beginPath();
-      ctx.rect(-entity.radius * 2, -entity.radius * 2, entity.radius * 2, entity.radius * 4);
+      ctx.rect(-r * 2.5, -r * 2.5, r * 2.5, r * 5);
       ctx.clip();
     } else if (entity.half === 1) {
       ctx.beginPath();
-      ctx.rect(0, -entity.radius * 2, entity.radius * 2, entity.radius * 4);
+      ctx.rect(0, -r * 2.5, r * 2.5, r * 5);
       ctx.clip();
     }
     ctx.globalAlpha = alpha;
 
-    // Solid body fill for contrast on black
-    ctx.fillStyle = entity.type.fill;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, entity.radius * 0.92, entity.radius * 0.98, 0, 0, Math.PI * 2);
+    // Outer glow for black background readability
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.22;
+    ctx.fillStyle = type.color;
+    fruitBodyPath(shape, r * 1.18);
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = alpha;
+
+    // Drop shadow
+    ctx.save();
+    ctx.translate(r * 0.1, r * 0.14);
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.fillStyle = "#000";
+    fruitBodyPath(shape, r * 0.98);
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = alpha;
+
+    // Body gradient
+    const grad = ctx.createRadialGradient(
+      -r * 0.4,
+      -r * 0.45,
+      r * 0.05,
+      r * 0.1,
+      r * 0.15,
+      r * 1.2
+    );
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.12, type.color);
+    grad.addColorStop(0.5, type.fill);
+    grad.addColorStop(1, type.deep);
+    ctx.fillStyle = grad;
+    fruitBodyPath(shape, r);
     ctx.fill();
 
-    // Soft rim so the silhouette reads clearly
-    ctx.strokeStyle = entity.type.color;
-    ctx.lineWidth = Math.max(2, entity.radius * 0.08);
+    // Procedural surface details under ASCII
+    drawFruitDecor(type, r, entity.half);
+
+    // Specular gloss
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.32, -r * 0.36, r * 0.32, r * 0.18, -0.55, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.34)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.18, -r * 0.48, r * 0.1, r * 0.06, -0.4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.fill();
+
+    // Crisp rim
+    ctx.strokeStyle = type.color;
+    ctx.lineWidth = Math.max(1.5, r * 0.065);
+    fruitBodyPath(shape, r);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = Math.max(1, r * 0.03);
+    fruitBodyPath(shape, r * 0.97);
     ctx.stroke();
 
+    // ASCII clipped to body
+    ctx.save();
+    fruitBodyPath(shape, r * 0.96);
+    ctx.clip();
     ctx.font = `bold ${fontSize}px ui-monospace, "Cascadia Code", "Courier New", monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const startY = -((art.length - 1) * lineH) / 2;
 
-    // Dark under-pass so glyphs stay readable on the fill
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
     for (let i = 0; i < art.length; i++) {
-      ctx.fillText(art[i], 1, startY + i * lineH + 1);
+      ctx.fillText(art[i], 1.1, startY + i * lineH + 1.1);
     }
-
-    ctx.fillStyle = entity.type.color;
+    ctx.fillStyle = type.color;
     for (let i = 0; i < art.length; i++) {
       ctx.fillText(art[i], 0, startY + i * lineH);
     }
+    if (type.accent) {
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      for (let i = 0; i < type.accent.length; i++) {
+        ctx.fillText(type.accent[i], 0, startY + i * lineH);
+      }
+    }
+    ctx.restore();
+
     ctx.restore();
   }
 
@@ -791,12 +1081,18 @@
 
     if (screenFlash) {
       const t = Math.max(0, screenFlash.life / screenFlash.maxLife);
-      ctx.globalAlpha = 0.5 * t;
-      ctx.fillStyle = "#ff3d00";
-      ctx.fillRect(0, 0, width, height);
-      ctx.globalAlpha = 0.35 * t * t;
-      ctx.fillStyle = "#fff59d";
-      ctx.fillRect(0, 0, width, height);
+      if (screenFlash.color.startsWith("#")) {
+        ctx.globalAlpha = 0.28 * t;
+        ctx.fillStyle = screenFlash.color;
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.globalAlpha = 0.5 * t;
+        ctx.fillStyle = "#ff3d00";
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalAlpha = 0.35 * t * t;
+        ctx.fillStyle = "#fff59d";
+        ctx.fillRect(0, 0, width, height);
+      }
       ctx.globalAlpha = 1;
     }
   }
