@@ -4,17 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>Browser Games</title>
+  <title>Coop Pong</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="hub">
-    <h1>Browser Games</h1>
-    <p class="tagline">Local co-op on one screen</p>
-    <nav class="games">
-      <a href="games/coop-pong/">Coop Pong</a>
-      <a href="games/fruit-coop/">Fruit Coop</a>
-    </nav>
-  </main>
+  <canvas id="game" aria-label="Coop Pong court"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="message">Tap to start</div>
+  </div>
+  <a class="back" href="../../">Games</a>
+  <script src="game.js"></script>
 </body>
 </html>

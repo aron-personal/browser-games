@@ -14,47 +14,62 @@ body {
   background: #000;
   color: #fff;
   font-family: "Segoe UI", Helvetica, Arial, sans-serif;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-#game {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
-  cursor: none;
-}
-
-#hud {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
+.hub {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: max(1.5rem, env(safe-area-inset-top));
+  justify-content: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.06), transparent 60%),
+    #000;
 }
 
-#score {
-  font-size: clamp(2.5rem, 8vw, 4.5rem);
+.hub h1 {
+  font-size: clamp(2rem, 7vw, 3.25rem);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
-}
-
-#message {
-  margin-top: 0.75rem;
-  font-size: clamp(1rem, 3.5vw, 1.35rem);
   letter-spacing: 0.06em;
-  opacity: 0.9;
-  text-align: center;
-  max-width: 90vw;
+  text-transform: uppercase;
 }
 
-#message.hidden {
-  visibility: hidden;
+.tagline {
+  margin-top: 0.75rem;
+  font-size: clamp(0.95rem, 3vw, 1.15rem);
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.games {
+  margin-top: 3rem;
+  width: min(22rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.games a {
+  display: block;
+  padding: 1.15rem 1.5rem;
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+  font-size: clamp(1.15rem, 4vw, 1.4rem);
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.games a:hover,
+.games a:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #fff;
+  outline: none;
+}
+
+.games a:active {
+  background: rgba(255, 255, 255, 0.14);
 }
