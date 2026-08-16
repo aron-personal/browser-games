@@ -15,44 +15,100 @@
   const MIN_SPAWN_MS = 420;
   const BOMB_CHANCE = 0.14;
 
-  /** @type {{ name: string, color: string, art: string[] }[]} */
+  /** @type {{ name: string, color: string, fill: string, art: string[] }[]} */
   const FRUIT_TYPES = [
     {
       name: "apple",
-      color: "#f07178",
-      art: ["  .-.  ", " (o o) ", " |   | ", "  '-'  "],
+      color: "#ff6b6b",
+      fill: "#c62828",
+      art: [
+        "   ,@@,   ",
+        "  @@@@@@  ",
+        " @@@@@@@@ ",
+        " @@@@@@@@ ",
+        "  @@@@@@  ",
+        "   '@@'   ",
+      ],
     },
     {
       name: "banana",
-      color: "#e6c07b",
-      art: ["   ,   ", "  / \\  ", " |   ) ", "  \\_/  "],
+      color: "#ffd54f",
+      fill: "#f9a825",
+      art: [
+        "     ##   ",
+        "    ####  ",
+        "   ##  ## ",
+        "  ##   ## ",
+        " ##   ##  ",
+        "  ###'    ",
+      ],
     },
     {
       name: "watermelon",
-      color: "#98c379",
-      art: [" .---. ", "/:::::\\", "\\:::::/", " '---' "],
+      color: "#69f0ae",
+      fill: "#2e7d32",
+      art: [
+        "  .%%%%.  ",
+        " %%%%%%%% ",
+        "%%%%%%%%%%",
+        "%%%%%%%%%%",
+        " %%%%%%%% ",
+        "  '%%%%'  ",
+      ],
     },
     {
       name: "orange",
-      color: "#d19a66",
-      art: ["  .-.  ", " (   ) ", "  '-'  "],
+      color: "#ffab40",
+      fill: "#ef6c00",
+      art: [
+        "  .@@@@.  ",
+        " @@@@@@@@ ",
+        "@@@@@@@@@@",
+        " @@@@@@@@ ",
+        "  '@@@@'  ",
+      ],
     },
     {
       name: "starfruit",
-      color: "#c678dd",
-      art: ["  /\\   ", " <  >  ", "  \\/   "],
+      color: "#ea80fc",
+      fill: "#8e24aa",
+      art: [
+        "    **    ",
+        "   ****   ",
+        " ******** ",
+        "**********",
+        " ******** ",
+        "   ****   ",
+        "    **    ",
+      ],
     },
     {
       name: "pear",
-      color: "#56b6c2",
-      art: ["  .-.  ", " (   ) ", "  \\_/  ", "   '   "],
+      color: "#40c4ff",
+      fill: "#0277bd",
+      art: [
+        "   .@@.   ",
+        "  @@@@@@  ",
+        " @@@@@@@@ ",
+        "@@@@@@@@@@",
+        " @@@@@@@@ ",
+        "  '@@@@'  ",
+      ],
     },
   ];
 
   const BOMB_TYPE = {
     name: "bomb",
-    color: "#e06c75",
-    art: ["  .-.  ", " (x x) ", " |___| ", "  /|\\  "],
+    color: "#ff5252",
+    fill: "#212121",
+    art: [
+      "    !!    ",
+      "  .@@@@.  ",
+      " @@x  x@@ ",
+      " @@@@@@@@ ",
+      "  @@@@@@  ",
+      "   '@@'   ",
+    ],
   };
 
   let width = 0;
@@ -87,8 +143,12 @@
 
   /** @type {Entity[]} */
   let entities = [];
-  /** @type {{ x: number, y: number, vx: number, vy: number, life: number, color: string }[]} */
+  /** @type {{ x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string, drag: number, kind: 'juice' | 'spark' | 'smoke' | 'ember' }[]} */
   let particles = [];
+  /** @type {{ x: number, y: number, radius: number, maxRadius: number, life: number, maxLife: number, color: string, width: number }[]} */
+  let rings = [];
+  /** @type {{ life: number, maxLife: number, color: string } | null} */
+  let screenFlash = null;
 
   /** @type {Map<number, { points: { x: number, y: number, t: number }[], active: boolean }>} */
   const blades = new Map();
@@ -126,7 +186,7 @@
   }
 
   function fruitRadius() {
-    return Math.max(28, Math.min(width, height) * 0.055);
+    return Math.max(22, Math.min(width, height) * 0.045);
   }
 
   function spawnInterval() {
@@ -171,6 +231,8 @@
     comboMessageUntil = 0;
     entities = [];
     particles = [];
+    rings = [];
+    screenFlash = null;
     spawnTimer = 0.35;
     state = "playing";
     updateScoreDisplay();
@@ -211,6 +273,22 @@
     sliceFruit(entity, bladeAngle);
   }
 
+  function spawnParticle(opts) {
+    const maxLife = opts.life;
+    particles.push({
+      x: opts.x,
+      y: opts.y,
+      vx: opts.vx,
+      vy: opts.vy,
+      life: maxLife,
+      maxLife,
+      size: opts.size,
+      color: opts.color,
+      drag: opts.drag ?? 0.98,
+      kind: opts.kind ?? "juice",
+    });
+  }
+
   function sliceFruit(entity, bladeAngle) {
     entity.sliced = true;
     const nx = Math.cos(bladeAngle + Math.PI / 2);
@@ -236,34 +314,158 @@
       });
     }
 
-    for (let i = 0; i < 10; i++) {
+    // Directional juice spray along the cut
+    const count = 42 + ((Math.random() * 18) | 0);
+    for (let i = 0; i < count; i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const spread = (Math.random() - 0.5) * 1.35;
+      const a = bladeAngle + (Math.PI / 2) * side + spread;
+      const sp = 70 + Math.random() * 340;
+      spawnParticle({
+        x: entity.x + (Math.random() - 0.5) * entity.radius * 0.7,
+        y: entity.y + (Math.random() - 0.5) * entity.radius * 0.7,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 50 - Math.random() * 110,
+        life: 0.4 + Math.random() * 0.55,
+        size: 2.5 + Math.random() * 6.5,
+        color: Math.random() < 0.28 ? "#fff5e6" : entity.type.color,
+        drag: 0.985,
+        kind: "juice",
+      });
+    }
+
+    // Extra radial juice burst from the center
+    for (let i = 0; i < 20; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 80 + Math.random() * 220;
-      particles.push({
+      const sp = 50 + Math.random() * 220;
+      spawnParticle({
         x: entity.x,
         y: entity.y,
         vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp - 60,
-        life: 0.35 + Math.random() * 0.35,
-        color: entity.type.color,
+        vy: Math.sin(a) * sp - 30,
+        life: 0.3 + Math.random() * 0.4,
+        size: 2 + Math.random() * 5,
+        color: entity.type.fill || entity.type.color,
+        drag: 0.98,
+        kind: "juice",
       });
     }
+
+    // Tiny bright sparks on the blade line
+    for (let i = 0; i < 8; i++) {
+      const t = (Math.random() - 0.5) * entity.radius * 1.4;
+      const a = bladeAngle + (Math.random() - 0.5) * 0.6;
+      const sp = 40 + Math.random() * 160;
+      spawnParticle({
+        x: entity.x + Math.cos(bladeAngle) * t,
+        y: entity.y + Math.sin(bladeAngle) * t,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.15 + Math.random() * 0.2,
+        size: 1.5 + Math.random() * 2.5,
+        color: "#ffffff",
+        drag: 0.92,
+        kind: "spark",
+      });
+    }
+
+    rings.push({
+      x: entity.x,
+      y: entity.y,
+      radius: entity.radius * 0.3,
+      maxRadius: entity.radius * 2.2,
+      life: 0.28,
+      maxLife: 0.28,
+      color: entity.type.color,
+      width: 2.5,
+    });
   }
 
   function explodeBomb(entity) {
-    for (let i = 0; i < 28; i++) {
+    entity.sliced = true;
+    screenFlash = { life: 0.28, maxLife: 0.28, color: "rgba(255, 80, 60, 0.55)" };
+
+    for (let i = 0; i < 3; i++) {
+      rings.push({
+        x: entity.x,
+        y: entity.y,
+        radius: entity.radius * (0.2 + i * 0.15),
+        maxRadius: Math.min(width, height) * (0.28 + i * 0.12),
+        life: 0.45 + i * 0.12,
+        maxLife: 0.45 + i * 0.12,
+        color: i === 0 ? "#ffeb3b" : i === 1 ? "#ff7043" : "#ff1744",
+        width: 4 - i,
+      });
+    }
+
+    // Core white flash particles
+    for (let i = 0; i < 16; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 120 + Math.random() * 320;
-      particles.push({
+      const sp = 40 + Math.random() * 180;
+      spawnParticle({
+        x: entity.x,
+        y: entity.y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.2 + Math.random() * 0.2,
+        size: 3 + Math.random() * 6,
+        color: "#fffde7",
+        drag: 0.9,
+        kind: "spark",
+      });
+    }
+
+    // Fast embers
+    for (let i = 0; i < 42; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 160 + Math.random() * 420;
+      const hot = Math.random();
+      spawnParticle({
+        x: entity.x + (Math.random() - 0.5) * 12,
+        y: entity.y + (Math.random() - 0.5) * 12,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 30,
+        life: 0.45 + Math.random() * 0.55,
+        size: 2 + Math.random() * 5,
+        color: hot > 0.66 ? "#ffeb3b" : hot > 0.33 ? "#ff6e40" : "#ff1744",
+        drag: 0.975,
+        kind: "ember",
+      });
+    }
+
+    // Expanding smoke
+    for (let i = 0; i < 22; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 40 + Math.random() * 160;
+      spawnParticle({
+        x: entity.x,
+        y: entity.y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 20,
+        life: 0.7 + Math.random() * 0.6,
+        size: 8 + Math.random() * 18,
+        color: Math.random() < 0.5 ? "#616161" : "#9e9e9e",
+        drag: 0.96,
+        kind: "smoke",
+      });
+    }
+
+    // Shrapnel scraps
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 200 + Math.random() * 380;
+      spawnParticle({
         x: entity.x,
         y: entity.y,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp,
         life: 0.5 + Math.random() * 0.4,
-        color: i % 2 === 0 ? "#e06c75" : "#abb2bf",
+        size: 2 + Math.random() * 3,
+        color: "#eceff1",
+        drag: 0.99,
+        kind: "spark",
       });
     }
-    entity.sliced = true;
   }
 
   function distPointToSegment(px, py, ax, ay, bx, by) {
@@ -426,12 +628,30 @@
     });
 
     for (const p of particles) {
-      p.vy += GRAVITY * 0.35 * dt;
+      p.vx *= Math.pow(p.drag, dt * 60);
+      p.vy *= Math.pow(p.drag, dt * 60);
+      if (p.kind === "juice" || p.kind === "ember") {
+        p.vy += GRAVITY * (p.kind === "juice" ? 0.45 : 0.2) * dt;
+      } else if (p.kind === "smoke") {
+        p.vy -= 40 * dt;
+        p.size += 18 * dt;
+      }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.life -= dt;
     }
     particles = particles.filter((p) => p.life > 0);
+
+    for (const ring of rings) {
+      ring.radius += (ring.maxRadius - ring.radius) * Math.min(1, 10 * dt);
+      ring.life -= dt;
+    }
+    rings = rings.filter((r) => r.life > 0);
+
+    if (screenFlash) {
+      screenFlash.life -= dt;
+      if (screenFlash.life <= 0) screenFlash = null;
+    }
 
     for (const [id, blade] of blades) {
       blade.points = blade.points.filter((pt) => now - pt.t < TRAIL_FADE_MS * 2.5);
@@ -452,8 +672,9 @@
 
   function drawAscii(entity) {
     const art = entity.type.art;
-    const lineH = Math.max(12, entity.radius * 0.42);
-    const fontSize = Math.max(11, lineH * 0.95);
+    const lineH = Math.max(11, entity.radius * 0.36);
+    const fontSize = Math.max(12, lineH * 1.05);
+    const alpha = entity.alpha ?? 1;
     ctx.save();
     ctx.translate(entity.x, entity.y);
     ctx.rotate(entity.angle);
@@ -466,12 +687,31 @@
       ctx.rect(0, -entity.radius * 2, entity.radius * 2, entity.radius * 4);
       ctx.clip();
     }
-    ctx.globalAlpha = entity.alpha ?? 1;
-    ctx.fillStyle = entity.type.color;
+    ctx.globalAlpha = alpha;
+
+    // Solid body fill for contrast on black
+    ctx.fillStyle = entity.type.fill;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, entity.radius * 0.92, entity.radius * 0.98, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Soft rim so the silhouette reads clearly
+    ctx.strokeStyle = entity.type.color;
+    ctx.lineWidth = Math.max(2, entity.radius * 0.08);
+    ctx.stroke();
+
     ctx.font = `bold ${fontSize}px ui-monospace, "Cascadia Code", "Courier New", monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const startY = -((art.length - 1) * lineH) / 2;
+
+    // Dark under-pass so glyphs stay readable on the fill
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    for (let i = 0; i < art.length; i++) {
+      ctx.fillText(art[i], 1, startY + i * lineH + 1);
+    }
+
+    ctx.fillStyle = entity.type.color;
     for (let i = 0; i < art.length; i++) {
       ctx.fillText(art[i], 0, startY + i * lineH);
     }
@@ -504,10 +744,42 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, width, height);
 
+    // Smoke behind everything else
     for (const p of particles) {
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2));
+      if (p.kind !== "smoke") continue;
+      const t = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = t * 0.35;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const ring of rings) {
+      const t = Math.max(0, ring.life / ring.maxLife);
+      ctx.globalAlpha = t * 0.85;
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = ring.width * (0.6 + t);
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    for (const p of particles) {
+      if (p.kind === "smoke") continue;
+      const t = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = Math.min(1, t * (p.kind === "spark" ? 1.2 : 1.4));
+      ctx.fillStyle = p.color;
+      const s = p.size * (0.55 + t * 0.55);
+      if (p.kind === "spark" || p.kind === "ember") {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, s * 0.7, s, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
 
@@ -516,6 +788,17 @@
     }
 
     drawTrails();
+
+    if (screenFlash) {
+      const t = Math.max(0, screenFlash.life / screenFlash.maxLife);
+      ctx.globalAlpha = 0.5 * t;
+      ctx.fillStyle = "#ff3d00";
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalAlpha = 0.35 * t * t;
+      ctx.fillStyle = "#fff59d";
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalAlpha = 1;
+    }
   }
 
   function frame(time) {
