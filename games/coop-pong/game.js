@@ -42,10 +42,6 @@
   /** @type {'ready' | 'playing' | 'miss'} */
   let state = "ready";
   let lastTime = 0;
-  /** @type {{ left: number, right: number }} */
-  const lastTapAt = { left: 0, right: 0 };
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let pendingStart = null;
   const DOUBLE_TAP_MS = 320;
 
   function resize() {
@@ -172,30 +168,8 @@
     pointers.set(event.pointerId, side);
     setPaddleY(side, event.clientY, event.pointerType);
 
-    const now = performance.now();
-    // Canvas double-tap fullscreen only when not playing (avoids accidental exit mid-game).
-    if (state !== "playing") {
-      const doubleTap = now - lastTapAt[side] < DOUBLE_TAP_MS;
-      lastTapAt[side] = now;
-      if (doubleTap) {
-        if (pendingStart !== null) {
-          clearTimeout(pendingStart);
-          pendingStart = null;
-        }
-        lastTapAt[side] = 0;
-        toggleFullscreen();
-        return;
-      }
-    } else {
-      lastTapAt[side] = 0;
-    }
-
     if (state === "ready" || state === "miss") {
-      if (pendingStart !== null) clearTimeout(pendingStart);
-      pendingStart = setTimeout(() => {
-        pendingStart = null;
-        if (state === "ready" || state === "miss") startRally();
-      }, DOUBLE_TAP_MS);
+      startRally();
     }
   }
 

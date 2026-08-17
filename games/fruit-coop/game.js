@@ -155,9 +155,6 @@
   let combo = 0;
   let lastCutAt = 0;
   let comboMessageUntil = 0;
-  let lastTapAt = 0;
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let pendingStart = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let restartUnlockTimer = null;
   let restartAllowedAt = 0;
@@ -329,10 +326,6 @@
   function endGame(reason) {
     state = "over";
     blades.clear();
-    if (pendingStart !== null) {
-      clearTimeout(pendingStart);
-      pendingStart = null;
-    }
     restartAllowedAt = performance.now() + RESTART_LOCK_MS;
     if (restartUnlockTimer !== null) clearTimeout(restartUnlockTimer);
     restartUnlockTimer = setTimeout(() => {
@@ -667,32 +660,8 @@
       active: true,
     });
 
-      // Canvas double-tap fullscreen only when not playing (avoids accidental exit mid-game).
-    if (state !== "playing") {
-      const doubleTap = now - lastTapAt < DOUBLE_TAP_MS;
-      lastTapAt = now;
-      if (doubleTap) {
-        if (pendingStart !== null) {
-          clearTimeout(pendingStart);
-          pendingStart = null;
-        }
-        lastTapAt = 0;
-        toggleFullscreen();
-        return;
-      }
-    } else {
-      lastTapAt = 0;
-    }
-
-    if (state === "ready" || state === "over") {
-      if (state === "over" && !canRestart()) return;
-      if (pendingStart !== null) clearTimeout(pendingStart);
-      pendingStart = setTimeout(() => {
-        pendingStart = null;
-        if (state === "ready" || (state === "over" && canRestart())) {
-          startGame();
-        }
-      }, DOUBLE_TAP_MS);
+    if (state === "ready" || (state === "over" && canRestart())) {
+      startGame();
     }
   }
 
