@@ -4,6 +4,10 @@
   const scoreEl = document.getElementById("score");
   const livesEl = document.getElementById("lives");
   const messageEl = document.getElementById("message");
+  const resultEl = document.getElementById("result");
+  const resultReasonEl = document.getElementById("result-reason");
+  const resultScoreEl = document.getElementById("result-score");
+  const resultHighscoreEl = document.getElementById("result-highscore");
 
   const GRAVITY = 980;
   const MAX_MISSES = 3;
@@ -11,6 +15,8 @@
   const TRAIL_MAX_POINTS = 14;
   const TRAIL_FADE_MS = 180;
   const DOUBLE_TAP_MS = 320;
+  const RESTART_LOCK_MS = 2400;
+  const HIGHSCORE_KEY = "fruit-coop-highscore";
   const BASE_SPAWN_MS = 1100;
   const MIN_SPAWN_MS = 420;
   const BOMB_CHANCE = 0.14;
@@ -152,6 +158,10 @@
   let lastTapAt = 0;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let pendingStart = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let restartUnlockTimer = null;
+  let restartAllowedAt = 0;
+  let highScore = loadHighScore();
 
   /** @typedef {{
    *  id: number,
@@ -191,6 +201,23 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  function loadHighScore() {
+    try {
+      const n = Number(localStorage.getItem(HIGHSCORE_KEY));
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function saveHighScore(value) {
+    try {
+      localStorage.setItem(HIGHSCORE_KEY, String(value));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
   function setMessage(text) {
     if (!text) {
       messageEl.classList.add("hidden");
@@ -199,6 +226,34 @@
     }
     messageEl.classList.remove("hidden");
     messageEl.textContent = text;
+  }
+
+  function hideResult() {
+    resultEl.classList.add("hidden");
+    resultEl.classList.remove("locked");
+    scoreEl.classList.remove("hidden");
+    livesEl.classList.remove("hidden");
+  }
+
+  function showResult(reason) {
+    const previousBest = highScore;
+    const isNewBest = score > previousBest;
+    if (isNewBest) {
+      highScore = score;
+      saveHighScore(highScore);
+    }
+
+    resultReasonEl.textContent = reason;
+    resultScoreEl.textContent = String(score);
+    resultHighscoreEl.textContent = isNewBest && score > 0
+      ? "New best"
+      : `Best ${highScore}`;
+
+    resultEl.classList.remove("hidden");
+    resultEl.classList.add("locked");
+    scoreEl.classList.add("hidden");
+    livesEl.classList.add("hidden");
+    setMessage("");
   }
 
   function updateScoreDisplay() {
@@ -260,6 +315,12 @@
     screenFlash = null;
     spawnTimer = 0.35;
     state = "playing";
+    restartAllowedAt = 0;
+    if (restartUnlockTimer !== null) {
+      clearTimeout(restartUnlockTimer);
+      restartUnlockTimer = null;
+    }
+    hideResult();
     updateScoreDisplay();
     updateLivesDisplay();
     setMessage("");
@@ -268,7 +329,21 @@
   function endGame(reason) {
     state = "over";
     blades.clear();
-    setMessage(`${reason} — ${score} pts. Tap to play again`);
+    if (pendingStart !== null) {
+      clearTimeout(pendingStart);
+      pendingStart = null;
+    }
+    restartAllowedAt = performance.now() + RESTART_LOCK_MS;
+    if (restartUnlockTimer !== null) clearTimeout(restartUnlockTimer);
+    restartUnlockTimer = setTimeout(() => {
+      restartUnlockTimer = null;
+      if (state === "over") resultEl.classList.remove("locked");
+    }, RESTART_LOCK_MS);
+    showResult(reason);
+  }
+
+  function canRestart() {
+    return performance.now() >= restartAllowedAt;
   }
 
   function registerCut(entity, bladeAngle) {
@@ -610,10 +685,13 @@
     }
 
     if (state === "ready" || state === "over") {
+      if (state === "over" && !canRestart()) return;
       if (pendingStart !== null) clearTimeout(pendingStart);
       pendingStart = setTimeout(() => {
         pendingStart = null;
-        if (state === "ready" || state === "over") startGame();
+        if (state === "ready" || (state === "over" && canRestart())) {
+          startGame();
+        }
       }, DOUBLE_TAP_MS);
     }
   }

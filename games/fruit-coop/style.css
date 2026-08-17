@@ -64,8 +64,65 @@ body {
   font-family: "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
-#message.hidden {
+#message.hidden,
+#score.hidden,
+#lives.hidden {
   visibility: hidden;
+}
+
+#result {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+#result.hidden {
+  display: none;
+}
+
+#result-reason {
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: clamp(1rem, 3.5vw, 1.4rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+#result-score {
+  margin-top: 0.35rem;
+  font-size: clamp(4.5rem, 18vw, 9rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.8);
+}
+
+#result-highscore {
+  margin-top: 0.65rem;
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: clamp(0.85rem, 2.6vw, 1.05rem);
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+}
+
+#result-hint {
+  margin-top: 1.6rem;
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+  transition: opacity 0.25s ease;
+}
+
+#result.locked #result-hint {
+  opacity: 0.28;
 }
 
 .top-left {
